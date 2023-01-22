@@ -15,6 +15,7 @@ services:
         image: postgres:15.1-alpine3.17
         volumes:
             - ./pgdata:/var/lib/postgresql/data
+            - ./psql:/docker-entrypoint-initdb.d/:ro
         restart: always
         ports:
             -   "5432:5432"

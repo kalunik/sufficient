@@ -1,6 +1,7 @@
 package main
 
 import (
+	"flag"
 	"fmt"
 	"github.com/nats-io/stan.go"
 	"io"
@@ -8,7 +9,10 @@ import (
 )
 
 func main() {
-	jsonFile, err := os.Open("../model.json")
+	jsonPtr := flag.String("json", "../model.json", "use a custom json")
+	flag.Parse()
+
+	jsonFile, err := os.Open(*jsonPtr)
 	if err != nil {
 		fmt.Println(err)
 	}
@@ -23,7 +27,8 @@ func main() {
 	if err != nil {
 		fmt.Println(err)
 	}
-	fmt.Println(byteValue)
+
+	//byteValue = []byte("Qwerty") //todo test it
 
 	sc, err := stan.Connect("test-cluster", "john")
 	if err != nil {
