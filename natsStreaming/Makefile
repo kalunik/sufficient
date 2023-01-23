@@ -33,7 +33,7 @@ vol:
 
 rmvol:
 	sudo rm -rf $(DB_PTH)
-# 	sudo docker volume prune -f
+	sudo docker volume prune -f
 
 fclean: rmvol down
 	sudo docker system prune -af
