@@ -3,6 +3,7 @@ package main
 import (
 	"database/sql"
 	"fmt"
+	model "service/service/models"
 )
 
 const (
@@ -14,11 +15,11 @@ const (
 )
 
 func connectDB() *sql.DB {
-	psqlInfo := fmt.Sprintf("host=%s port=%d user=%s "+
+	pgsqlInfo := fmt.Sprintf("host=%s port=%d user=%s "+
 		"password=%s dbname=%s sslmode=disable",
 		host, port, user, pass, dbname)
 
-	db, err := sql.Open("postgres", psqlInfo)
+	db, err := sql.Open("postgres", pgsqlInfo)
 	if err != nil {
 		panic(err)
 	}
@@ -30,7 +31,7 @@ func connectDB() *sql.DB {
 	return db
 }
 
-func restoreCache(db *sql.DB) map[string]string {
+func restoreCache(db *sql.DB) model.Cache {
 
 	q := `SELECT uid, data FROM orders LIMIT $1`
 	rows, err := db.Query(q, 50)
@@ -44,14 +45,14 @@ func restoreCache(db *sql.DB) map[string]string {
 		}
 	}(rows)
 
-	cache := map[string]string{}
+	cache := &model.InMemoryCache{}
 	for rows.Next() {
 		uid, data := "", ""
 		err = rows.Scan(&uid, &data)
 		if err != nil {
 			fmt.Println("Scanning rows err: ", err)
 		}
-		cache[uid] = data
+		cache.Set(uid, data)
 	}
 	err = rows.Err()
 	if err != nil {

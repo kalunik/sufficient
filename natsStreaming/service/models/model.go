@@ -1,5 +1,49 @@
 package model
 
+import (
+	"encoding/json"
+	"sync"
+)
+
+type Cache interface {
+	Get(key string) (string, bool)
+	Set(key string, value string)
+}
+
+type InMemoryCache struct {
+	sync.RWMutex
+	store map[string]Order
+}
+
+func (c *InMemoryCache) Get(key string) (string, bool) {
+	c.Lock()
+	defer c.Unlock()
+
+	data, found := c.store[key]
+	if found {
+		byteData, err := json.Marshal(data)
+		if err != nil {
+			return "", false
+		}
+		return string(byteData), found
+	}
+	return "", found
+}
+
+func (c *InMemoryCache) Set(key string, value string) {
+	c.Lock()
+	defer c.Unlock()
+
+	var order Order
+	_ = json.Unmarshal([]byte(value), &order)
+
+	if len(c.store) != 0 {
+		c.store[key] = order
+	}
+	c.store = make(map[string]Order)
+	c.store[key] = order
+}
+
 type Order struct {
 	OrderUid          string   `json:"order_uid"`
 	TrackNumber       string   `json:"track_number"`
