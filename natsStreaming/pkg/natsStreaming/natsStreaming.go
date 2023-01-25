@@ -38,7 +38,7 @@ func stanMsgHandler(cache model.Cache, db *sql.DB) stan.MsgHandler {
 		}
 
 		fmt.Println("STAN got NEW order: ", order.OrderUid)
-		cache.Set(order.OrderUid, string(m.Data))
+		cache.Set(order.OrderUid, m.Data)
 
 		q := `INSERT INTO orders (uid, data) VALUES ($1, $2) RETURNING uid`
 		_, err := db.Exec(q, order.OrderUid, string(m.Data))

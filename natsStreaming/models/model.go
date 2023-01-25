@@ -1,47 +1,43 @@
 package model
 
 import (
-	"encoding/json"
 	"sync"
 )
 
 type Cache interface {
-	Get(key string) (string, bool)
-	Set(key string, value string)
+	Get(key string) (interface{}, bool)
+	Set(key string, value interface{})
 }
 
 type InMemoryCache struct {
 	sync.RWMutex
-	store map[string]Order
+	store map[string]interface{}
 }
 
-func (c *InMemoryCache) Get(key string) (string, bool) {
+func NewCache() *InMemoryCache {
+	return &InMemoryCache{store: make(map[string]interface{})}
+}
+
+func (c *InMemoryCache) Get(key string) (interface{}, bool) {
+	c.RLock()
+	defer c.RUnlock()
+
+	var value interface{}
+	data, ok := c.store[key]
+	if ok {
+		value = data
+	}
+	return value, ok
+}
+
+func (c *InMemoryCache) Set(key string, value interface{}) {
 	c.Lock()
 	defer c.Unlock()
 
-	data, found := c.store[key]
-	if found {
-		byteData, err := json.Marshal(data)
-		if err != nil {
-			return "", false
-		}
-		return string(byteData), found
+	_, ok := c.store[key]
+	if !ok {
+		c.store[key] = value
 	}
-	return "", found
-}
-
-func (c *InMemoryCache) Set(key string, value string) {
-	c.Lock()
-	defer c.Unlock()
-
-	var order Order
-	_ = json.Unmarshal([]byte(value), &order)
-
-	if len(c.store) != 0 {
-		c.store[key] = order
-	}
-	c.store = make(map[string]Order)
-	c.store[key] = order
 }
 
 type Order struct {

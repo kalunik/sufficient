@@ -8,10 +8,10 @@ import (
 
 func prepareData(uid string, cache model.Cache, w http.ResponseWriter) string {
 	data, ok := cache.Get(uid)
-	if ok != true {
-		fmt.Fprintf(w, "<div>There is no data with associated order_uid %s<div>", uid)
+	if !ok {
+		return "There is no data with associated order_uid " + uid
 	}
-	return data
+	return string(data.([]byte))
 }
 
 func HttpHandler(cache model.Cache) http.Handler {

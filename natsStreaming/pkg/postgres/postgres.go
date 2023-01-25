@@ -39,9 +39,10 @@ func RestoreCache(db *sql.DB) model.Cache {
 		}
 	}(rows)
 
-	cache := &model.InMemoryCache{}
+	cache := model.NewCache()
 	for rows.Next() {
-		uid, data := "", ""
+		uid := ""
+		var data interface{}
 		err = rows.Scan(&uid, &data)
 		if err != nil {
 			fmt.Println("Scanning rows err: ", err)
