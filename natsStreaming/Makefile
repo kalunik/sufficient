@@ -1,43 +1,32 @@
-COMPOSE_PTH	= ./docker-compose.yml
 DB_PTH      = ./pgdata
 
-all: vol build up
+all: build up
 
 build:
-	docker compose -f $(COMPOSE_PTH) build
+	docker compose build
 
 up:
-	docker compose -f $(COMPOSE_PTH) up
-
-ps:
-	docker ps -a
-
-logs:
-	docker compose -f $(COMPOSE_PTH) logs
-
-
-stop:
-	docker compose -f $(COMPOSE_PTH) stop
-
-start:
-	docker compose -f $(COMPOSE_PTH) start
+	docker compose up
 
 down:
-	docker compose -f $(COMPOSE_PTH) down
+	docker compose down
+
+start:
+	docker compose start
+
+stop:
+	docker compose stop
 
 exec:
 	docker exec -it $(serv) sh
 
-vol:
-	mkdir -p $(DB_PTH)
+rmvolume:
+	rm -rf $(DB_PTH)
+	docker volume prune -f
 
-rmvol:
-	sudo rm -rf $(DB_PTH)
-	sudo docker volume prune -f
-
-fclean: rmvol down
+fclean: rmvolume down
 	sudo docker system prune -af
 
-re: down rmvol vol build up
+re: down rmvolume build up
 
-.PHONY: all hosts build up ps logs stop start down vol rmvol fclean re
+.PHONY: all build up down start stop rmvolume fclean re

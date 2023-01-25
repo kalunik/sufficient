@@ -1,0 +1,5 @@
+
+CREATE TABLE IF NOT EXISTS orders (
+  uid TEXT PRIMARY KEY,
+  data JSONB NOT NULL DEFAULT '{}'::jsonb
+);

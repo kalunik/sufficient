@@ -9,34 +9,29 @@ import (
 )
 
 func main() {
-	jsonPtr := flag.String("json", "../model.json", "use a custom json")
+	jsonPtr := flag.String("json", "order1.json", "use a custom json")
 	flag.Parse()
 
 	jsonFile, err := os.Open(*jsonPtr)
 	if err != nil {
 		fmt.Println(err)
 	}
-	defer func(jsonFile *os.File) {
-		err := jsonFile.Close()
-		if err != nil {
-			fmt.Println(err)
-		}
-	}(jsonFile)
+	defer jsonFile.Close()
 
 	byteValue, err := io.ReadAll(jsonFile)
 	if err != nil {
 		fmt.Println(err)
 	}
 
-	//byteValue = []byte("Qwerty") //todo test it
-
 	sc, err := stan.Connect("test-cluster", "john")
 	if err != nil {
 		panic(err)
 	}
+	defer sc.Close()
 
 	err = sc.Publish("orders", []byte(byteValue))
 	if err != nil {
-		return
+		fmt.Println("Can't publish: ", err)
 	}
+	fmt.Println(*jsonPtr, "was sent")
 }

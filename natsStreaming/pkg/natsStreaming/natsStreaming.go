@@ -1,17 +1,18 @@
-package main
+package natsStreaming
 
 import (
+	conf "app/config"
+	model "app/models"
 	"database/sql"
 	"encoding/json"
 	"fmt"
 	"github.com/nats-io/stan.go"
-	model "service/service/models"
 	"time"
 )
 
 var previousUid string
 
-func parseMsg(msg []byte) model.Order {
+func ParseMsg(msg []byte) model.Order {
 	var order model.Order
 
 	err := json.Unmarshal(msg, &order)
@@ -31,9 +32,8 @@ func isCorrectUid(uid string) bool {
 
 func stanMsgHandler(cache model.Cache, db *sql.DB) stan.MsgHandler {
 	return func(m *stan.Msg) {
-		order := parseMsg(m.Data)
+		order := ParseMsg(m.Data)
 		if !isCorrectUid(order.OrderUid) {
-			fmt.Println("STAN listen ...")
 			return
 		}
 
@@ -49,15 +49,15 @@ func stanMsgHandler(cache model.Cache, db *sql.DB) stan.MsgHandler {
 	}
 }
 
-func workerStanMsg(cache model.Cache, db *sql.DB) {
+func WorkerStanMsg(cache model.Cache, db *sql.DB) {
 	for {
-		sc, err := stan.Connect(stanCluster, stanClient)
+		sc, err := stan.Connect(conf.StanCluster, conf.StanClient, stan.NatsURL(conf.StanUrl))
 		if err != nil {
 			fmt.Println("Connecting stan err: ", err)
 		}
 
-		sub, _ := sc.Subscribe(stanSubj, stanMsgHandler(cache, db),
-			stan.DurableName(stanDurableName), stan.StartWithLastReceived())
+		sub, _ := sc.Subscribe(conf.StanSubj, stanMsgHandler(cache, db),
+			stan.DurableName(conf.StanDurableName), stan.StartWithLastReceived())
 
 		err = sub.Unsubscribe()
 		if err != nil {
@@ -68,6 +68,6 @@ func workerStanMsg(cache model.Cache, db *sql.DB) {
 			fmt.Println("Closing STAN connection err: ", err)
 		}
 
-		time.Sleep(intervalMsgCheck)
+		time.Sleep(conf.ReconnectInterval)
 	}
 }

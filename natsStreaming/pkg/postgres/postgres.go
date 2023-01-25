@@ -1,23 +1,17 @@
-package main
+package postgres
 
 import (
+	conf "app/config"
+	model "app/models"
 	"database/sql"
 	"fmt"
-	model "service/service/models"
+	_ "github.com/lib/pq"
 )
 
-const (
-	host   = "localhost"
-	port   = 5432
-	user   = "wjonatho"
-	pass   = "My8es1P4ss"
-	dbname = "stan"
-)
-
-func connectDB() *sql.DB {
-	pgsqlInfo := fmt.Sprintf("host=%s port=%d user=%s "+
+func ConnectDB() *sql.DB {
+	pgsqlInfo := fmt.Sprintf("host=%s port=%s user=%s "+
 		"password=%s dbname=%s sslmode=disable",
-		host, port, user, pass, dbname)
+		conf.Host, conf.Port, conf.User, conf.Pass, conf.Dbname)
 
 	db, err := sql.Open("postgres", pgsqlInfo)
 	if err != nil {
@@ -31,7 +25,7 @@ func connectDB() *sql.DB {
 	return db
 }
 
-func restoreCache(db *sql.DB) model.Cache {
+func RestoreCache(db *sql.DB) model.Cache {
 
 	q := `SELECT uid, data FROM orders LIMIT $1`
 	rows, err := db.Query(q, 50)
