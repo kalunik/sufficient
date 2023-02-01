@@ -6,64 +6,70 @@
 package main
 
 import (
+	"context"
 	"fmt"
 	"os"
 	"os/signal"
+	"sync"
 )
 
-func worker(in <-chan int, quit chan os.Signal, workerSerial int) {
-	//LOOP:
+func getPoolSize() int {
+	var workerPoolSize int
+
+	fmt.Println("Enter number of workers:")
+	if _, err := fmt.Scan(&workerPoolSize); err != nil {
+		fmt.Println("Scan err:", err)
+	}
+	return workerPoolSize
+}
+
+func writeToChan(workCh chan int, cancelFunc context.CancelFunc) {
+	cancelCh := make(chan os.Signal, 1) //буфферизированный канал, чтобы не пропустить сигнал, если мы не готовы, а сигнал послан
+	go func(cancelCh chan os.Signal) {
+		signal.Notify(cancelCh, os.Interrupt) //ожидает SIGINT, отправит в канал
+	}(cancelCh)
+
+LOOP: //маркер цикла
+	for i := 0; ; i++ {
+		select { //мултиплексор
+		case <-cancelCh: //при получении сигнала сработает
+			cancelFunc() //при вызове функци отправится в канал ctx.Done
+			break LOOP
+		default: // выполняется если нет других кейсов, которые готовы
+			workCh <- i
+		}
+	}
+	close(workCh) //канал закрывается на стороне отправителя, из него еще можно читать
+}
+
+func readWorker(in chan int, ctx context.Context, workerSerial int, wg *sync.WaitGroup) {
 	for {
 		select {
-		case <-in:
-			fmt.Fprintln(os.Stdout, "worker #", workerSerial, "output:", <-in)
-			//case <-quit:
-			//	fmt.Fprintln(os.Stdout, "worker #", workerSerial, ": I've done ")
-			//	break LOOP
+		case <-ctx.Done(): //как только отпработает CancelFunc
+			fmt.Fprintln(os.Stdout, "worker #", workerSerial, ": I've done ")
+			wg.Done() //подсчет завершившихся воркеров
+			return
+		case num, ok := <-in:
+			if ok {
+				fmt.Fprintln(os.Stdout, "worker #", workerSerial, "output:", num)
+			}
 		}
 	}
 }
 
 func main() {
-	// Set up channel on which to send signal notifications.
-	// We must use a buffered channel or risk missing the signal
-	// if we're not ready to receive when the signal is sent.
-	c := make(chan os.Signal, 1)
 
-	// Passing no signals to Notify means that
-	// all signals will be sent to the channel.
-	signal.Notify(c)
+	workerPoolSize := getPoolSize()
 
-	// Block until any signal is received.
-	s := <-c
-	fmt.Println("Got signal:", s)
+	ctx, cancelFunc := context.WithCancel(context.Background()) //для передачи в воркер информации о завершении, при получении сигнала
+	wg := &sync.WaitGroup{}
+	wg.Add(workerPoolSize)
 
-	//var workersQty int
-	//
-	//fmt.Println("Enter number of workers:")
-	//if _, err := fmt.Scan(&workersQty); err != nil {
-	//	fmt.Println("Scan err:", err)
-	//	return
-	//}
-	//
-	//workCh := make(chan int)
-	//cancelCh := make(chan os.Signal, 1)
-	//for i := 0; i < workersQty; i++ {
-	//	go worker(workCh, cancelCh, i)
-	//}
-	//
-	//go func(cancelCh chan os.Signal) {
-	//	signal.Notify(cancelCh, os.Interrupt)
-	//}(cancelCh)
-	//
-	//for i := 0; ; i++ {
-	//	select {
-	//	case <-cancelCh:
-	//		close(workCh)
-	//	default:
-	//		workCh <- i
-	//
-	//	}
-	//}
+	workCh := make(chan int)
+	for i := 0; i < workerPoolSize; i++ {
+		go readWorker(workCh, ctx, i, wg)
+	}
 
+	writeToChan(workCh, cancelFunc)
+	wg.Wait() //ждем завершения воркеров
 }
